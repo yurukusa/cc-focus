@@ -1,0 +1,26 @@
+{
+  "name": "cc-focus",
+  "version": "1.0.0",
+  "description": "Are you spreading too thin across projects? Weekly project scatter trends for Claude Code sessions.",
+  "type": "module",
+  "bin": {
+    "cc-focus": "cli.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "ai",
+    "productivity",
+    "focus",
+    "project-management",
+    "developer-tools"
+  ],
+  "author": "yurukusa",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yurukusa/cc-focus"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
