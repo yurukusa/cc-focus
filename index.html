@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cc-focus — Weekly Project Scatter Visualizer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #f0883e;
+      --accent-dim: rgba(240,136,62,0.15);
+      --accent-border: rgba(240,136,62,0.35);
+      --green: #3fb950;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --radius: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--muted); font-weight: 400; }
+    .badge {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    header p {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    /* ── Input section ── */
+    .input-section {
+      margin-bottom: 32px;
+    }
+    .input-section h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    textarea::placeholder { color: var(--muted); }
+    .input-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+      text-decoration: none;
+      line-height: 1;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1117;
+      border-color: var(--accent);
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: var(--border);
+    }
+    .btn-twitter {
+      background: #1d9bf0;
+      color: #fff;
+      border-color: #1d9bf0;
+    }
+    .error-msg {
+      color: var(--red);
+      font-size: 12px;
+      margin-top: 8px;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+
+    /* ── Results section ── */
+    #results { display: none; }
+    #results.show { display: block; }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .stat-accent { color: var(--accent); }
+
+    /* ── Trend badge ── */
+    .trend-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .trend-down { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+    .trend-up { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+    .trend-stable { background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+
+    /* ── Chart section ── */
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .chart-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .chart {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .week-row {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      align-items: start;
+      gap: 12px;
+    }
+    .week-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      padding-top: 4px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .bar-area { display: flex; flex-direction: column; gap: 6px; }
+    .bar-track {
+      height: 24px;
+      background: rgba(48,54,61,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, rgba(240,136,62,0.7) 100%);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      position: relative;
+      min-width: 4px;
+    }
+    .bar-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 50%);
+      border-radius: 4px;
+    }
+    .scatter-label {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      pointer-events: none;
+    }
+    .project-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 1px 7px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      white-space: nowrap;
+    }
+    .week-meta {
+      text-align: right;
+      white-space: nowrap;
+      padding-top: 2px;
+    }
+    .week-meta .count {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+    .week-meta .count span { font-size: 12px; font-weight: 400; color: var(--muted); }
+    .week-meta .sessions {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+
+    /* ── Share row ── */
+    .share-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .share-row p { color: var(--muted); font-size: 13px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">cc-focus <span>visualizer</span></div>
+  <span class="badge">Weekly Scatter</span>
+  <p>Part of cc-toolkit</p>
+</header>
+
+<main>
+
+  <!-- ── Input ── -->
+  <div class="input-section">
+    <h2>Paste JSON or drop file</h2>
+    <div class="drop-zone" id="dropZone">
+      <textarea id="jsonInput" placeholder='Paste output from `npx cc-focus --json` here, or drag &amp; drop the file...'></textarea>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="input-actions">
+      <button class="btn btn-primary" onclick="parseAndRender()">Visualize</button>
+      <button class="btn btn-secondary" onclick="loadDemo()">Demo data</button>
+      <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div id="results">
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <div class="chart-header">
+      <h3>Weekly project scatter</h3>
+    </div>
+    <div class="chart" id="chart"></div>
+
+    <hr class="divider" />
+
+    <div class="share-row">
+      <p>Share your focus trend:</p>
+      <button class="btn btn-twitter" id="shareBtn" onclick="shareTwitter()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.261 5.638 5.903-5.638zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  One of 36 free tools at <a href="https://yurukusa.github.io/cc-toolkit/" target="_blank">yurukusa.github.io/cc-toolkit/</a>
+  &nbsp;|&nbsp; <code>npx cc-focus</code>
+</footer>
+
+<script>
+  /* ── Demo data ── */
+  const DEMO = {
+    "version": "1.0.0",
+    "generatedAt": "2026-03-01T03:23:05.150Z",
+    "weeks": 8,
+    "trend": "converging (-40%)",
+    "trendDir": "down",
+    "weeklyFocus": [
+      {"weekStart": "2026-02-01", "projectCount": 4, "projects": ["flame", "namakusa", "test", "tmp"], "sessions": 22, "hours": 1},
+      {"weekStart": "2026-02-08", "projectCount": 1, "projects": ["brain"], "sessions": 7, "hours": 0.2},
+      {"weekStart": "2026-02-15", "projectCount": 2, "projects": ["cascade", "namakusa"], "sessions": 39, "hours": 17.3},
+      {"weekStart": "2026-02-22", "projectCount": 1, "projects": ["namakusa"], "sessions": 16, "hours": 4.8}
+    ]
+  };
+
+  /* ── Drag & drop ── */
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('jsonInput').value = ev.target.result;
+      parseAndRender();
+    };
+    reader.readAsText(file);
+  });
+
+  /* ── Auto-render on paste ── */
+  document.getElementById('jsonInput').addEventListener('input', () => {
+    const v = document.getElementById('jsonInput').value.trim();
+    if (v.startsWith('{') && v.endsWith('}')) {
+      parseAndRender();
+    }
+  });
+
+  /* ── Helpers ── */
+  function scatterLevel(n) {
+    if (n <= 2) return 'Low (1-2)';
+    if (n <= 5) return 'Medium (3-5)';
+    return 'High (6+)';
+  }
+
+  function styleLabel(avg) {
+    if (avg <= 2) return 'Deep coder 🎯';
+    if (avg <= 5) return 'Balanced 🔀';
+    return 'Context switcher 🌀';
+  }
+
+  function formatWeekLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+
+  function formatHours(h) {
+    if (!h && h !== 0) return '';
+    if (h < 1) return `${Math.round(h * 60)}m`;
+    return `${h.toFixed(1)}h`;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function clearError() {
+    document.getElementById('errorMsg').classList.remove('show');
+  }
+
+  /* ── Parse & render ── */
+  function parseAndRender() {
+    clearError();
+    const raw = document.getElementById('jsonInput').value.trim();
+    if (!raw) { showError('Paste JSON first.'); return; }
+
+    let data;
+    try { data = JSON.parse(raw); } catch (e) { showError('Invalid JSON: ' + e.message); return; }
+
+    if (!data.weeklyFocus || !Array.isArray(data.weeklyFocus)) {
+      showError('Missing weeklyFocus array. Run `npx cc-focus --json` to generate.');
+      return;
+    }
+
+    render(data);
+  }
+
+  function render(data) {
+    // Filter active weeks (projectCount > 0 and has sessions)
+    const activeWeeks = data.weeklyFocus.filter(w => w.projectCount > 0 && (w.sessions === undefined || w.sessions > 0));
+
+    // Stats
+    const totalSessions = activeWeeks.reduce((s, w) => s + (w.sessions || 0), 0);
+    const totalHours = activeWeeks.reduce((s, w) => s + (w.hours || 0), 0);
+    const avgProjects = activeWeeks.length > 0
+      ? activeWeeks.reduce((s, w) => s + w.projectCount, 0) / activeWeeks.length
+      : 0;
+    const style = styleLabel(avgProjects);
+    const trend = data.trend || 'unknown';
+    const trendDir = data.trendDir || 'stable';
+
+    /* Summary cards */
+    const summaryGrid = document.getElementById('summaryGrid');
+    summaryGrid.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Active weeks</div>
+        <div class="stat-value stat-accent">${activeWeeks.length}</div>
+        <div class="stat-sub">of ${data.weeks || activeWeeks.length} total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg projects / week</div>
+        <div class="stat-value">${avgProjects.toFixed(1)}</div>
+        <div class="stat-sub">${style}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Focus trend</div>
+        <div class="stat-value" style="font-size:16px;margin-top:4px;">
+          <span class="trend-badge ${trendBadgeClass(trendDir)}">${trendArrow(trendDir)} ${trend}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total sessions</div>
+        <div class="stat-value">${totalSessions}</div>
+        <div class="stat-sub">${totalHours.toFixed(1)}h recorded</div>
+      </div>
+    `;
+
+    /* Chart */
+    const chart = document.getElementById('chart');
+    chart.innerHTML = '';
+    const maxCount = Math.max(...activeWeeks.map(w => w.projectCount), 1);
+
+    activeWeeks.forEach(week => {
+      const pct = Math.round((week.projectCount / maxCount) * 100);
+      const row = document.createElement('div');
+      row.className = 'week-row';
+
+      const chips = (week.projects || []).map(p =>
+        `<span class="chip">${escHtml(p)}</span>`
+      ).join('');
+
+      const hoursStr = week.hours !== undefined ? ` · ${formatHours(week.hours)}` : '';
+
+      row.innerHTML = `
+        <div class="week-label">${formatWeekLabel(week.weekStart)}</div>
+        <div class="bar-area">
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${pct}%"></div>
+            <span class="scatter-label">${scatterLevel(week.projectCount)}</span>
+          </div>
+          <div class="project-chips">${chips}</div>
+        </div>
+        <div class="week-meta">
+          <div class="count">${week.projectCount} <span>proj</span></div>
+          <div class="sessions">${week.sessions || 0} sessions${hoursStr}</div>
+        </div>
+      `;
+      chart.appendChild(row);
+    });
+
+    /* Store share data */
+    window._shareData = { trend, style, trendDir };
+
+    /* Show results */
+    document.getElementById('results').classList.add('show');
+  }
+
+  function trendBadgeClass(dir) {
+    if (dir === 'down') return 'trend-down';
+    if (dir === 'up') return 'trend-up';
+    return 'trend-stable';
+  }
+
+  function trendArrow(dir) {
+    if (dir === 'down') return '↘';
+    if (dir === 'up') return '↗';
+    return '↔';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── Demo ── */
+  function loadDemo() {
+    document.getElementById('jsonInput').value = JSON.stringify(DEMO, null, 2);
+    render(DEMO);
+  }
+
+  /* ── Clear ── */
+  function clearAll() {
+    document.getElementById('jsonInput').value = '';
+    document.getElementById('results').classList.remove('show');
+    clearError();
+  }
+
+  /* ── Twitter share ── */
+  function shareTwitter() {
+    const d = window._shareData || {};
+    const trend = d.trend || 'unknown';
+    const style = (d.style || 'Deep coder 🎯').replace(/[\u{1F300}-\u{1FFFF}]/gu, '').trim();
+    const arrow = trendArrow(d.trendDir || 'stable');
+    const text = `My #ClaudeCode focus trend: ${trend} ${arrow} — ${style} (by cc-focus) https://yurukusa.github.io/cc-focus/ #cc-toolkit`;
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
+  }
+</script>
+
+</body>
+</html>
